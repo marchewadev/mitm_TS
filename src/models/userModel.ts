@@ -4,9 +4,11 @@ export class Stranger {
   // The user's name serves as the sole identifier for the individual utilizing the app, intended solely for user-friendliness.
   name: string;
   url: string;
+  pageTest: any;
   private captchaResolved: boolean;
   private isConnectedToChatRoom: boolean;
   private messages: Array<{ message: string | null; sentAt: number }>;
+  private subscribers: Map<string, Function>;
 
   constructor(
     name: string,
@@ -20,6 +22,7 @@ export class Stranger {
     this.captchaResolved = captchaResolved;
     this.isConnectedToChatRoom = isConnectedToChatRoom;
     this.messages = messages;
+    this.subscribers = new Map();
   }
 
   async sleep(ms: number) {
@@ -33,20 +36,18 @@ export class Stranger {
     });
 
     if (isCaptchaFrameVisible) {
-      console.log("Rozwiąż captchę.");
       const isCaptchaResolved = await page.waitForFunction(
         "document.querySelector('.sd-unit') === null"
       );
 
       if (isCaptchaResolved) {
         this.captchaResolved = true;
-        console.log("Captcha rozwiązana.\n");
       }
     }
   }
 
   async disconnectFromChatRoom(page: Page): Promise<any> {
-    console.log("Rozmówca się rozłączył.");
+    console.log(`${this.name} się rozłączył.`);
     console.log("-----------------------\n");
 
     await page.waitForSelector(".o-new-talk", {
@@ -54,13 +55,15 @@ export class Stranger {
       timeout: 0,
     });
 
-    const disconnectButton = await page.$(".o-new-talk");
+    try {
+      const disconnectButton = await page.$(".o-new-talk");
 
-    await this.sleep(2000);
-    disconnectButton?.click();
-    this.isConnectedToChatRoom = false;
-
-    return;
+      await this.sleep(2000);
+      disconnectButton?.click();
+      this.isConnectedToChatRoom = false;
+    } catch (err) {
+      return;
+    }
   }
 
   async getMessageFromChatRoom(page: Page): Promise<any> {
@@ -81,14 +84,16 @@ export class Stranger {
       if (!lastMessage) {
         this.messages.push(messageData);
         console.log(`${this.name}: ${messageData.message}`);
+
+        this.notifySubscribers("message", messageData.message);
       } else {
         if (messageData.sentAt > lastMessage.sentAt) {
           this.messages.push(messageData);
           console.log(`${this.name}: ${messageData.message}`);
+
+          this.notifySubscribers("message", messageData.message);
         }
       }
-
-      return;
     }
   }
 
@@ -100,8 +105,6 @@ export class Stranger {
 
       if (isChatting) {
         this.isConnectedToChatRoom = true;
-        console.log("Połączono z rozmówcą.");
-        console.log("---------------------\n");
 
         while (this.isConnectedToChatRoom) {
           await this.getMessageFromChatRoom(page);
@@ -112,6 +115,7 @@ export class Stranger {
             });
 
             if (isChatEnded && this.isConnectedToChatRoom) {
+              this.notifySubscribers("disconnect");
               await this.disconnectFromChatRoom(page);
               break;
             }
@@ -127,18 +131,74 @@ export class Stranger {
     }
   }
 
-  async createNewSession(): Promise<void> {
-    const browser = await puppeteer.launch({ headless: false });
+  subscribe(eventName: string, callback: Function): void {
+    this.subscribers.set(eventName, callback);
+  }
+
+  private notifySubscribers(eventName: string, message?: string | null): void {
+    this.subscribers.forEach((callback, event) => {
+      if (event === eventName) {
+        if (message) {
+          callback(message);
+        } else {
+          callback();
+        }
+      }
+    });
+  }
+
+  async disconnect() {
+    try {
+      const disconnectButton = await this.pageTest.$(".o-esc");
+
+      disconnectButton?.click({ count: 3, delay: 5 });
+      this.isConnectedToChatRoom = false;
+    } catch (err) {
+      return;
+    }
+  }
+
+  async sendMessage(msg: string) {
+    if (this.isConnectedToChatRoom) {
+      try {
+        const textarea = await this.pageTest.$("#box-interface-input");
+        await textarea?.type(msg, { delay: 1 });
+
+        const sendButton = await this.pageTest.$(".o-send.enabled");
+        await sendButton?.click();
+      } catch (error) {
+        return;
+      }
+    }
+  }
+
+  async createNewSession(subscriber: any): Promise<void> {
+    const browser = await puppeteer.launch({
+      defaultViewport: { width: 1280, height: 800 },
+      args: ["--window-size=1280,1000"],
+      headless: false,
+      product: "firefox",
+      protocol: "webDriverBiDi",
+    });
 
     const page = await browser.newPage();
+
+    this.pageTest = page;
+
     await page.goto(this.url);
 
     await page.waitForSelector(".fc-consent-root");
     const personalDataButton = await page.$(".fc-primary-button");
     await personalDataButton?.click();
 
-    // TODO: At this point, a captcha appears. I think training AI to solve captchas, possibly using Python, would be a good solution. For now, the captcha needs to be transcribed manually.
-    // TODO: Honestly, this is one of the hardest captchas to solve, or maybe I'm just too dumb.
+    this.subscribe("disconnect", async () => {
+      await this.sleep(3500);
+      await subscriber.disconnect();
+    });
+
+    this.subscribe("message", async (msg: string) => {
+      await subscriber.sendMessage(msg);
+    });
 
     await this.resolveCaptcha(page);
 

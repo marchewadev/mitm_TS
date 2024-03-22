@@ -1,19 +1,22 @@
-WebScraper z wykorzystaniem TypeScript i Puppeteer
+# WebScraper using TypeScript and Puppeteer
 
-Projekt został stworzony w języku TypeScript i wykorzystuje bibliotekę Puppeteer do przeprowadzania webscrapingu. Głównym celem projektu jest przechwytywanie wiadomości z witryny internetowej, umożliwiając komunikację pomiędzy dwoma instancjami modelu użytkownika przy użyciu wzorca projektowego obserwatora.
+This project is created in TypeScript and utilizes the Puppeteer library for web scraping. The main goal of the project is to capture messages from a website, enabling communication between two instances of a user model using the observer design pattern.
 
-Wymagania
+## Prerequisites
 
-    Node.js
-    TypeScript
-    Puppeteer
+- Node.js (v20+ recommended)
 
-Instalacja
+## Installation
 
-    git clone https://github.com/marchewadev/mitm_TS.git
-    cd mitm_TS
-    npm install
+```bash
+git clone https://github.com/marchewadev/mitm_TS.git
+cd mitm_TS
+npm install
+npx puppeteer browsers install firefox
+```
 
-Uruchomienie
+## Usage
 
-    npm start
+```bash
+npm start
+```

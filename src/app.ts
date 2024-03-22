@@ -1,8 +1,9 @@
 import { Stranger } from "./models/userModel";
 
 const firstUser = new Stranger("Stachu");
-// const secondUser = new Stranger("Krzychu");
+const secondUser = new Stranger("Bolek");
 
 (async () => {
-  await firstUser.createNewSession();
+  firstUser.createNewSession(secondUser);
+  secondUser.createNewSession(firstUser);
 })();
