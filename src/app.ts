@@ -1,4 +1,4 @@
-import { Stranger } from "./models/userModel";
+import { Stranger } from "./models/strangerModel";
 
 const firstUser = new Stranger("Stachu");
 const secondUser = new Stranger("Bolek");
