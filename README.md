@@ -9,7 +9,7 @@ This project is created in TypeScript and utilizes the Puppeteer library for web
 ## Installation
 
 ```bash
-git clone https://github.com/marchewadev/mitm_TS.git
+git clone https://github.com/marchewadev/obcy_scraper.git
 cd mitm_TS
 npm install
 npx puppeteer browsers install firefox
